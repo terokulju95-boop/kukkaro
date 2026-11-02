@@ -1,0 +1,8 @@
+{
+  "name": "kukkaro",
+  "private": true,
+  "description": "Kukkaro – oma tulo- ja menoseuranta palkkajaksoittain (PWA). Sovellus ei tarvitse käännöstä – package.json on vain testejä varten.",
+  "type": "module",
+  "scripts": { "test": "node tests/unit.mjs && node tests/e2e.mjs" },
+  "devDependencies": { "playwright": "^1.48.0" }
+}
