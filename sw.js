@@ -1,6 +1,6 @@
 // Kukkaro – service worker: sovellus aukeaa myös ilman verkkoa.
 // Kun päivität sovelluksen tiedostoja GitHubiin, kasvata versionumeroa.
-const CACHE = "kukkaro-v2";
+const CACHE = "kukkaro-v3";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 const SHELL = ["./", "./index.html", "./styles.css", "./firebase-config.js", "./manifest.json",
   "./js/main.js", "./js/core.js", "./js/money.js", "./js/calc.js", "./js/theme.js", "./js/actions.js", "./js/lock.js",

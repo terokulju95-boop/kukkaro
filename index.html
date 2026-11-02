@@ -36,5 +36,17 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="js/main.js"></script>
+  <script>
+    // Jos sovellus ei käynnisty (esim. js-kansio puuttuu GitHubista), näytetään syy pyörivän latauksen sijaan
+    setTimeout(function () {
+      var b = document.getElementById("boot");
+      if (!b || b.hidden) return;
+      fetch("js/main.js", { cache: "no-store" }).then(function (r) {
+        b.innerHTML = r.ok
+          ? '<p>Sovellus ei käynnistynyt.</p><p style="font-size:.9rem;opacity:.8">Tarkista verkkoyhteys ja lataa sivu uudelleen. Jos ongelma jatkuu, jokin tiedosto js-kansiossa puuttuu tai on vanha.</p><button onclick="location.reload()">Lataa uudelleen</button>'
+          : '<p>Sovelluksen tiedostoja ei löydy.</p><p style="font-size:.9rem;opacity:.8">GitHub-reposta puuttuu js-kansio (js/main.js). Lataa js- ja icons-kansiot repoon.</p>';
+      }).catch(function () { b.innerHTML = "<p>Ei verkkoyhteyttä.</p>"; });
+    }, 8000);
+  </script>
 </body>
 </html>
