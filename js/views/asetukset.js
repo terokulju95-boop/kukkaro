@@ -235,7 +235,7 @@ document.addEventListener("change", e => {
 export function vYllapito() {
   if (S.lastBackupAt === undefined) { S.lastBackupAt = null; getDoc(doc(db, "app", "meta")).then(s => { S.lastBackupAt = s.exists() ? s.data().lastBackupAt : null; render(); }).catch(() => { }); }
   const y = Number(today().slice(0, 4));
-  const counts = [["tx", "tapahtumaa"], ["recurring", "toistuvaa"], ["categories", "kategoriaa"], ["goals", "säästötavoitetta"], ["periods", "muokattua jaksoa"]].map(([c, l]) => `${list(c).length} ${l}`).join(" · ");
+  const counts = [["tx", "tapahtumaa"], ["recurring", "toistuvaa"], ["categories", "kategoriaa"], ["accounts", "tiliä"], ["periods", "muokattua jaksoa"]].map(([c, l]) => `${list(c).length} ${l}`).join(" · ");
   return backLink() + `<div class="card"><div class="card-label">Varmuuskopio</div>
     <p>${S.lastBackupAt ? "Viimeisin varmuuskopio " + fmtDT(S.lastBackupAt) + "." : "Varmuuskopiota ei ole vielä otettu."}</p>
     <p class="small muted">${counts}</p>
@@ -268,6 +268,7 @@ export function vAloitus() {
     <label class="fld"><span>Nimesi</span><input name="name" value="${esc(T().text.name)}" maxlength="40"></label>
     ${moneyFld("salary", "Nettopalkka", st.salary)}
     ${dateFld("payday", "Seuraava palkkapäivä", st.payday)}
+    <label class="fld"><span>Käyttötilin saldo nyt (valinnainen)</span><span class="money"><input name="balance" type="text" inputmode="decimal" data-money="1" placeholder="0,00"><i>€</i></span><small class="muted">Katso verkkopankista. Näin näet etusivulla koko tilin rahat. Voit lisätä tämän myöhemminkin.</small></label>
     <label class="fld"><span>Palkka tulee</span><select name="cycle"><option value="28">4 viikon välein</option><option value="14">2 viikon välein</option><option value="7">viikoittain</option></select></label>
     ${cb("cats", "Lisää valmiit kategoriat", true, "Ruoka, liikenne, tilaukset, laskut, ASP-tili… Voit muokata ja poistaa niitä.")}
     ${cb("rec", "Lisää ehdotetut toistuvat", true, "Netflix, Rakennusliiton jäsenmaksu, puhelinlasku, Finnkino+, Storytel ja ASP-tili. Täydennät summat ja veloituspäivät itse.")}
@@ -293,6 +294,7 @@ document.addEventListener("submit", e => {
     const b = writeBatch(db);
     if (c("cats") && !list("categories").length) seedCategories(b);
     if (c("rec") && !list("recurring").length) seedRecurring(b, payday);
+    if (v("balance").trim() && !list("accounts").some(a => a.type === "kaytto")) b.set(doc(collection(db, "accounts")), { type: "kaytto", name: "Käyttötili", emoji: "💳", balance: num(v("balance")), balanceDate: today(), balanceAt: nowIso(), entries: [], checkedAt: nowIso(), createdAt: nowIso() });
     b.commit().catch(fail);
     const name = v("name").trim();
     if (name && name !== T().text.name) { const t = structuredClone(S.theme); t.text.name = name; S.theme = t; setDoc(doc(db, "app", "theme"), { ...t, updatedAt: nowIso() }).catch(fail); }

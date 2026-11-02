@@ -5,12 +5,24 @@ import { render } from "../main.js";
 import { S, bar, cat, cats, catColor, chip, empty, esc, eur, fmtDateLong, fmtShort, list, nl2br, periods, secH, settings, today, daysBetween } from "../core.js";
 import { DEFAULT_THEME, HOME_CARDS, HOME_SIZES, T, homeTitle, timeGreeting } from "../theme.js";
 import { saveBarState, tId, tText } from "./asetukset.js";
-import { period, curIndex, byCat, recurringCost, goalSaved } from "../calc.js";
+import { period, curIndex, byCat, recurringCost, accBalance, mainSummary, savingsAccs, savingsTotal } from "../calc.js";
+import { checkedLine } from "./kategoriat.js";
 import { skippedMonthly, doubles, amountAt, round2 } from "../money.js";
 import { rowHtml, catDot } from "./rows.js";
 
 const tab = (view, t) => `data-action="tab" data-view="${view}" data-tab="${t}"`;
 export const HOME_DATA = {
+  tili: () => {
+    const ms = mainSummary();
+    if (!ms) return { cls: "", body: `<p class="small">Kirjaa käyttötilisi saldo, niin näet koko tilin rahat – myös aiemmista palkoista jääneet.</p><button class="btn primary small" data-action="accSetup">Aseta käyttötilin saldo</button>`, short: '<button class="btn small" data-action="accSetup">Aseta saldo</button>' };
+    return {
+      noFullLink: true, right: `<button class="btn small" data-action="accCheck" data-id="${esc(ms.acc.id)}">Tarkista</button>`,
+      body: `<div class="saldo" data-action="accOpen" data-id="${esc(ms.acc.id)}" role="button"><div class="huge amt-v ${ms.now < 0 ? "bad" : ""}">${eur(ms.now)}</div>${checkedLine(ms.acc)}</div>
+        <div class="sumgrid"><div><span class="muted">Laskujen jälkeen ennen palkkaa</span><b class="amt-v">${eur(ms.after)}</b></div>
+        <div><span class="muted">Aiemmista palkoista</span><b class="amt-v ${ms.older < 0 ? "bad" : "pos"}">${eur(ms.older)}</b></div></div>`,
+      short: `<b class="amt-v">${eur(ms.now)}</b> <span class="muted">· aiemmista ${eur(ms.older)}</span>`
+    };
+  },
   notice: () => {
     const n = T().text.notice.trim(); if (!n) return null;
     return { body: `<p class="notes">${nl2br(n)}</p>`, short: esc(n.split("\n")[0]), cls: "notice" };
@@ -113,13 +125,15 @@ export const HOME_DATA = {
       short: tx.length ? `${esc(tx[0].note || cat(tx[0].cat).name)} <span class="muted">· ${eur(tx[0].amount)}</span>` : '<span class="muted">Ei kirjauksia</span>'
     };
   },
-  tavoitteet: () => {
-    const g = list("goals");
-    if (!g.length) return { href: "#tavoitteet", body: '<div class="muted small">Lisää säästötavoite, esim. ASP-tilin tavoitesumma.</div>', short: '<span class="muted">Ei tavoitteita</span>' };
+  saastot: () => {
+    const sav = savingsAccs();
+    if (!sav.length) return { href: "#tilit", body: '<div class="muted small">Lisää säästötili, esim. ASP-tili, niin näet säästöjesi kertymän.</div>', short: '<span class="muted">Ei säästötilejä</span>' };
+    const ms = mainSummary();
     return {
-      href: "#tavoitteet",
-      body: g.map(x => { const s = goalSaved(x), pct = x.target ? s / x.target * 100 : 0; return `<div class="goal-mini"><div class="row-between small"><span>${esc(x.emoji || "🎯")} ${esc(x.name)}</span><span><b class="amt-v sav">${eur(s)}</b> <span class="muted">/ ${eur(x.target)}</span></span></div>${bar(pct, "sav")}</div>`; }).join(""),
-      short: g.map(x => `${esc(x.emoji || "🎯")} ${Math.round(goalSaved(x) / (x.target || 1) * 100)} %`).join(" · ")
+      href: "#tilit",
+      body: sav.map(a => { const s = accBalance(a), t = Number(a.target) || 0; return `<div class="goal-mini"><div class="row-between small"><span>${esc(a.emoji || "🏦")} ${esc(a.name)}</span><span><b class="amt-v sav">${eur(s)}</b>${t ? ` <span class="muted">/ ${eur(t)}</span>` : ""}</span></div>${t ? bar(s / t * 100, "sav") : ""}</div>`; }).join("")
+        + `<div class="line total"><span>Säästöissä yhteensä</span><b class="amt-v sav">${eur(savingsTotal())}</b></div>${ms ? `<div class="line"><span class="muted">Kaikki tilit yhteensä</span><b>${eur(ms.now + savingsTotal())}</b></div>` : ""}`,
+      short: `<b class="amt-v sav">${eur(savingsTotal())}</b> <span class="muted">säästöissä</span>`
     };
   },
   tilaukset: () => {
@@ -134,6 +148,7 @@ export const HOME_DATA = {
   }
 };
 export const HOME_EMPTY = {
+  tili: "Aseta ensin käyttötilin saldo.",
   notice: "Muistio on tyhjä, joten sitä ei näytetä. Kirjoita teksti yläpuolelle.",
   kevyt: "Näkyy, kun sinulla on kuukausittaisia toistuvia menoja: kertoo, mille jaksolle ei osu kuukausilaskuja."
 };

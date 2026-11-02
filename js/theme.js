@@ -9,9 +9,9 @@ export const THEME_DOC = () => doc(db, "app", "theme");
 export const THEME_KEY = "kukkaro_theme";
 // [avain, oletusotsikko, oletuskoko]
 export const HOME_CARDS = [
-  ["notice", "Muistio", "full"], ["saldo", "Jaksossa jäljellä", "full"], ["paiva", "Päivässä", "half"], ["palkka", "Seuraava palkka", "half"],
+  ["tili", "Tilillä nyt", "full"], ["notice", "Muistio", "full"], ["saldo", "Tästä palkasta käytettävissä", "full"], ["paiva", "Päivässä", "half"], ["palkka", "Seuraava palkka", "half"],
   ["tulevat", "Tulossa tällä jaksolla", "full"], ["kevyt", "Kevyt jakso", "full"], ["budjetit", "Budjetit", "full"],
-  ["viimeisimmat", "Viimeisimmät", "full"], ["tavoitteet", "Säästötavoitteet", "full"], ["tilaukset", "Toistuvat menot", "compact"]
+  ["viimeisimmat", "Viimeisimmät", "full"], ["saastot", "Säästöt", "full"], ["tilaukset", "Toistuvat menot", "compact"]
 ];
 export const HOME_SIZES = [["full", "Iso"], ["compact", "Pieni"], ["half", "Puolikas"]];
 export const NAV_DEFAULTS = Object.fromEntries(NAV);
@@ -106,7 +106,7 @@ export function mergeTheme(src) {
   t.type.headWeight = oneOf(ty.headWeight, HEAD_WEIGHTS.map(w => w[0]), t.type.headWeight);
   if (typeof ty.labelCaps === "boolean") t.type.labelCaps = ty.labelCaps;
   for (const k of Object.keys(t.features)) if (typeof s.features?.[k] === "boolean") t.features[k] = s.features[k];
-  if (Array.isArray(s.menu?.order)) t.menu.order = [...new Set([...s.menu.order.filter(k => MENU_KEYS.some(m => m[0] === k)), ...t.menu.order])];
+  if (Array.isArray(s.menu?.order)) t.menu.order = [...new Set([...s.menu.order.map(k => k === "tavoitteet" ? "tilit" : k).filter(k => MENU_KEYS.some(m => m[0] === k)), ...t.menu.order])];
   for (const [k] of MENU_KEYS) if (typeof s.menu?.groups?.[k] === "string") t.menu.groups[k] = s.menu.groups[k].slice(0, 30);
   t.text.appName = str(tx.appName, t.text.appName, 40);
   t.text.tagline = str(tx.tagline, t.text.tagline, 100);
@@ -114,11 +114,15 @@ export function mergeTheme(src) {
   t.text.name = str(tx.name, t.text.name, 40);
   t.text.notice = str(tx.notice, "", 2000);
   for (const k of Object.keys(NAV_DEFAULTS)) t.text.nav[k] = str(tx.nav?.[k], NAV_DEFAULTS[k], 14);
-  if (Array.isArray(s.navItems)) t.navItems = [...new Set(s.navItems.filter(k => SECTIONS.some(x => x[0] === k)))].slice(0, NAV_MAX);
+  if (Array.isArray(s.navItems)) t.navItems = [...new Set(s.navItems.map(k => k === "tavoitteet" ? "tilit" : k).filter(k => SECTIONS.some(x => x[0] === k)))].slice(0, NAV_MAX);
+  const ren = k => ({ tavoitteet: "saastot" })[k] || k;
   if (Array.isArray(hm.order)) {
-    const known = hm.order.filter(k => HOME_CARDS.some(c => c[0] === k));
-    t.home.order = [...new Set([...known, ...t.home.order])];
+    // Uudet kortit lisätään oletuspaikalleen, eivät listan loppuun
+    const order = [...new Set(hm.order.map(ren).filter(k => HOME_CARDS.some(c => c[0] === k)))];
+    HOME_CARDS.forEach(([k], i) => { if (!order.includes(k)) order.splice(Math.min(i, order.length), 0, k); });
+    t.home.order = order;
   }
+  if (hm.hidden?.tavoitteet === true) hm.hidden.saastot = true;
   for (const [k] of HOME_CARDS) {
     if (hm.hidden?.[k] === true) t.home.hidden[k] = true;
     if (HOME_SIZES.some(z => z[0] === hm.size?.[k])) t.home.size[k] = hm.size[k];

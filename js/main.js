@@ -7,10 +7,10 @@ import { vKoti } from "./views/koti.js";
 import { vJakso } from "./views/jakso.js";
 import { vToistuvat } from "./views/toistuvat.js";
 import { vTilastot } from "./views/tilastot.js";
-import { vKategoriat, vTavoitteet } from "./views/kategoriat.js";
+import { vKategoriat, vTilit } from "./views/kategoriat.js";
 import { vLisaa, vAsetukset, vRahaAsetukset, vUlkoasu, vYksityisyys, vYllapito, vTili, vAloitus } from "./views/asetukset.js";
 import { lockActive, showLock, touchLock } from "./lock.js";
-import { updateNet, fabHtml } from "./actions.js";
+import { updateNet, fabHtml, migrateGoals } from "./actions.js";
 
 export const VIEWS = {
   koti: { title: () => appName(), render: vKoti, fab: true },
@@ -18,7 +18,7 @@ export const VIEWS = {
   toistuvat: { title: () => "Toistuvat", render: vToistuvat },
   tilastot: { title: () => "Tilastot", render: vTilastot },
   kategoriat: { title: () => "Kategoriat ja budjetit", render: vKategoriat },
-  tavoitteet: { title: () => "Säästötavoitteet", render: vTavoitteet },
+  tilit: { title: () => "Tilit ja säästöt", render: vTilit },
   lisaa: { title: () => "Lisää", render: vLisaa },
   asetukset: { title: () => "Asetukset", render: vAsetukset },
   rahaasetukset: { title: () => "Palkka ja jaksot", render: vRahaAsetukset },
@@ -35,6 +35,7 @@ export function scheduleRender() { if (rq) return; rq = true; requestAnimationFr
 export function render() {
   if (!S.user || !S.started) return;
   if (S.settingsLoaded && !S.settings?.done && S.view !== "aloitus") S.view = "aloitus";
+  migrateGoals();
   const view = $("#view");
   const a = document.activeElement;
   const keep = a && view.contains(a) && a.id ? { id: a.id, val: a.value, s: a.selectionStart } : null;
@@ -70,7 +71,7 @@ export function renderNav() {
   nav.style.gridTemplateColumns = `repeat(${keys.length}, 1fr)`;
   nav.innerHTML = NAV.filter(([k]) => keys.includes(k)).sort((a, b) => keys.indexOf(a[0]) - keys.indexOf(b[0])).map(([k, l]) => `<a href="#${k}" class="${k === active ? "on" : ""}" ${k === active ? 'aria-current="page"' : ""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg><span>${esc(labels[k] || l)}</span></a>`).join("");
 }
-export function routeFromHash() { const h = location.hash.slice(1); S.view = VIEWS[h] ? h : "koti"; }
+export function routeFromHash() { let h = location.hash.slice(1); if (h === "tavoitteet") h = "tilit"; S.view = VIEWS[h] ? h : "koti"; }
 window.addEventListener("hashchange", () => {
   const prev = S.view;
   routeFromHash();

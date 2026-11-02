@@ -7,7 +7,8 @@ import {
   sendPasswordResetEmail, setDoc, settings, signOut, toast, today, writeBatch, num, addDays
 } from "./core.js";
 import { RHYTHMS, SHIFTS, amountAt, occState, occAmount, parseYmd, round2, rhythmName } from "./money.js";
-import { period, curIndex } from "./calc.js";
+import { period, curIndex, accBalance, mainAcc, accMovements, ENTRY_TYPES } from "./calc.js";
+import { rowHtml } from "./views/rows.js";
 import { render, renderNav } from "./main.js";
 import { DARK_STYLES, DEFAULT_THEME, T, THEME_DOC, THEME_PRESETS, cacheTheme, discardThemeDraft, mergeTheme, previewTheme, themeDirty } from "./theme.js";
 import { THEMEVER_ACTIONS, pushThemeHistory } from "./views/teemat.js";
@@ -181,7 +182,7 @@ export function periodSheet(n) {
   return close;
 }
 
-// ---------- Kategoriat ja tavoitteet ----------
+// ---------- Kategoriat ----------
 export const CAT_FIELDS = [
   { name: "name", label: "Nimi", required: true, max: 40 },
   { name: "emoji", label: "Kuvake (emoji)", placeholder: "🛒", max: 4 },
@@ -200,28 +201,6 @@ export function catForm(id) {
     } : null
   });
 }
-export const GOAL_FIELDS = [
-  { name: "name", label: "Tavoite", required: true, placeholder: "esim. Oman asunnon käsiraha" },
-  { name: "emoji", label: "Kuvake (emoji)", placeholder: "🏡", max: 4 },
-  { name: "target", label: "Tavoitesumma (€)", type: "number", required: true },
-  { name: "cat", label: "Säästökategoria", type: "catpick", hint: "" },
-  { name: "base", label: "Säästössä nyt (€)", type: "number", hint: "Summa, joka tilillä on tänään. Tästä eteenpäin kategorian säästöt lisätään automaattisesti." },
-  { name: "deadline", label: "Tavoitepäivä (valinnainen)", type: "date" }
-];
-export function goalForm(id) {
-  const g = id ? findIn("goals", id) : null;
-  const fields = GOAL_FIELDS.map(f => f.name === "cat" ? { ...f, kindFrom: "", type: "select", options: () => cats("saasto").map(c => [c.id, `${c.emoji} ${c.name}`]) } : f);
-  openForm({
-    title: g ? "Muokkaa tavoitetta" : "Uusi säästötavoite", fields, values: g || { cat: "asp" },
-    onSubmit: v => {
-      const data = { ...v, emoji: v.emoji || "🎯" };
-      if (!g || round2(g.base) !== round2(v.base)) data.baseDate = today();
-      save("goals", data, g?.id);
-    },
-    onDelete: g ? () => confirmDel(`Poistetaanko tavoite "${g.name}"? Säästökirjaukset säilyvät.`, "goals", g) : null
-  });
-}
-
 // ---------- Aloitus ja oletustiedot ----------
 export function seedCategories(b) {
   DEFAULT_CATS.forEach(([id, name, emoji, kind], i) => b.set(doc(db, "categories", id), { name, emoji, kind, order: (i + 1) * 10, createdAt: nowIso() }));
@@ -233,7 +212,7 @@ export function seedRecurring(b, start) {
 }
 
 // ---------- Varmuuskopio ----------
-const COLS_ALL = ["tx", "recurring", "categories", "goals", "periods"];
+const COLS_ALL = ["tx", "recurring", "categories", "goals", "periods", "accounts"];
 export async function exportJson() {
   const out = { app: "kukkaro", version: 1, exportedAt: nowIso(), settings: S.settings, theme: S.theme, data: {} };
   for (const c of COLS_ALL) out.data[c] = list(c);
@@ -321,8 +300,6 @@ export const ACTIONS = {
     const b = writeBatch(db); k.forEach((x, n) => b.update(doc(db, "categories", x.id), { order: (n + 1) * 10 })); b.commit().catch(fail);
   },
   seedCats: () => { const b = writeBatch(db); seedCategories(b); b.commit().catch(fail); toast("Oletuskategoriat lisätty"); },
-  addGoal: () => goalForm(),
-  editGoal: d => goalForm(d.id),
 
   // Asetukset
   exportJson: () => exportJson(),
@@ -338,7 +315,7 @@ export const ACTIONS = {
     toast(t.features.hideAmounts ? "Summat piilotetaan etusivulla" : "Summat näytetään"); render();
   },
   wipeAll: async () => {
-    if (prompt('Tämä poistaa KAIKKI tapahtumat, toistuvat, kategoriat, tavoitteet ja jaksojen muutokset. Ota ensin varmuuskopio. Kirjoita POISTA vahvistaaksesi:') !== "POISTA") return;
+    if (prompt('Tämä poistaa KAIKKI tapahtumat, toistuvat, kategoriat, tilit ja jaksojen muutokset. Ota ensin varmuuskopio. Kirjoita POISTA vahvistaaksesi:') !== "POISTA") return;
     let b = writeBatch(db), k = 0;
     for (const c of COLS_ALL) for (const x of list(c)) { b.delete(doc(db, c, x.id)); if (++k >= 400) { await b.commit(); b = writeBatch(db); k = 0; } }
     b.delete(doc(db, "app", "settings"));
@@ -443,3 +420,141 @@ export function updateNet() {
 }
 window.addEventListener("online", updateNet);
 window.addEventListener("offline", updateNet);
+
+// =============================================================
+//  TILIT
+// =============================================================
+
+const accFields = (type, isNew) => [
+  { name: "name", label: "Tilin nimi", required: true, def: type === "kaytto" ? "Käyttötili" : "" , placeholder: type === "kaytto" ? "Käyttötili" : "esim. ASP-tili" },
+  { name: "emoji", label: "Kuvake (emoji)", def: type === "kaytto" ? "💳" : "🏦", max: 4 },
+  { name: "balance", label: isNew ? "Saldo nyt (€)" : "Saldo nyt (€) – korjaa, jos pankki näyttää muuta", type: "number", required: true, hint: type === "kaytto" ? "Katso verkkopankista tilin saldo juuri nyt. Tästä eteenpäin Kukkaro laskee saldon itse kirjauksistasi." : "Säästötilin saldo tänään. Toistuvat säästöt ja tämän kategorian säästökirjaukset lisätään siihen automaattisesti." },
+  ...(type === "kaytto" ? [] : [
+    { name: "cat", label: "Säästökategoria", type: "select", options: () => [...cats("saasto").map(c => [c.id, `${c.emoji} ${c.name}`]), ["__new", "+ Luo uusi kategoria tilin nimellä"]], hint: "Säästöt tähän kategoriaan siirtyvät käyttötililtä tälle tilille." },
+    { name: "target", label: "Säästötavoite (€, valinnainen)", type: "number" },
+    { name: "deadline", label: "Tavoitepäivä (valinnainen)", type: "date" }
+  ])
+];
+export function accForm(id, type = "saasto") {
+  const a = id ? findIn("accounts", id) : null; type = a?.type || type;
+  const cur = a ? accBalance(a) : null;
+  openForm({
+    title: a ? "Muokkaa: " + a.name : type === "kaytto" ? "Käyttötilin saldo" : "Uusi säästötili",
+    fields: accFields(type, !a), values: a ? { ...a, balance: cur } : {},
+    onSubmit: v => {
+      const data = { ...v, type };
+      if (v.cat === "__new") {
+        const cid = save("categories", { name: v.name, emoji: v.emoji || "🏦", kind: "saasto", order: cats().length * 10 + 10 });
+        data.cat = cid;
+      }
+      // Saldo asetetaan uudelleen vain, jos se muuttui
+      if (!a || round2(cur) !== round2(v.balance)) Object.assign(data, { balance: v.balance, balanceDate: today(), balanceAt: nowIso(), entries: [], checkedAt: nowIso() });
+      else delete data.balance;
+      save("accounts", data, a?.id);
+      toast(a ? "Tallennettu" : `${v.name} lisätty`);
+    },
+    onDelete: a ? () => confirmDel(`Poistetaanko tili "${a.name}"? Kirjaukset säilyvät, mutta tilin saldoa ei enää seurata.`, "accounts", a) : null
+  });
+}
+// Saldon tarkistus: pankin saldo vs. Kukkaron laskema
+export function checkSheet(id) {
+  const a = findIn("accounts", id); if (!a) return;
+  const calc = accBalance(a);
+  const close = openSheet("Tarkista saldo: " + a.name, `<p>Kukkaron laskema saldo: <b>${eur(calc)}</b></p>
+    <label class="fld fld-big"><span>Paljonko pankki näyttää nyt?</span><span class="money"><input id="bank-bal" type="text" inputmode="decimal" placeholder="0,00" data-money="1"><i>€</i></span></label>
+    <div id="check-res"></div>`, () => false);
+  const inp = $("#bank-bal"), res = $("#check-res");
+  setTimeout(() => inp.focus(), 60);
+  const draw = () => {
+    if (!inp.value.trim()) { res.innerHTML = ""; return; }
+    const diff = round2(num(inp.value) - calc);
+    res.innerHTML = Math.abs(diff) < 0.005
+      ? `<div class="done-msg">✓ Täsmää! Kaikki on kirjattu.</div><div class="sheet-btns"><button class="btn primary block" data-chk="ok">Valmis</button></div>`
+      : `<p class="${diff < 0 ? "bad" : "ok"}"><b>Ero ${eur(diff, true)}</b> – ${diff < 0 ? "tililtä on lähtenyt enemmän kuin Kukkaroon on kirjattu." : "tilillä on enemmän kuin Kukkaro laskee."}</p>
+        <div class="sheet-btns">
+          ${diff < 0 && a.type === "kaytto" ? `<button class="btn primary block" data-chk="add">Kirjaa puuttuva meno (${eur(-diff)})</button>` : ""}
+          ${diff > 0 && a.type !== "kaytto" ? `<button class="btn primary block" data-chk="korko">Kirjaa korkona / tuottona (${eur(diff)})</button>` : ""}
+          <button class="btn block" data-chk="tasaus">Tasaa saldo (kirjataan "Saldon tasaus")</button>
+        </div><p class="form-note">Tasaus korjaa vain tilin saldon. Se ei vaikuta palkkakauden laskelmiin eikä tilastoihin.</p>`;
+  };
+  inp.addEventListener("input", draw);
+  res.addEventListener("click", e => {
+    const b = e.target.closest("[data-chk]"); if (!b) return;
+    const diff = round2(num(inp.value) - calc), k = b.dataset.chk;
+    if (k === "add") { close(); setTimeout(() => txForm({ amount: -diff, kind: "meno", date: today() }), 30); return; }
+    if (k === "tasaus" || k === "korko") addEntry(a, { type: k, amount: diff });
+    patch("accounts", a.id, { checkedAt: nowIso() });
+    close(); toast(k === "ok" ? "Saldo täsmää ✓" : "Saldo päivitetty");
+  });
+}
+function addEntry(a, e) {
+  const entry = { date: today(), at: nowIso(), note: "", ...e };
+  patch("accounts", a.id, { entries: [...(a.entries || []), entry] });
+}
+// Korko, talletus tai nosto säästötililtä
+export function entryForm(id, type) {
+  const a = findIn("accounts", id); if (!a) return;
+  const main = mainAcc();
+  openForm({
+    title: `${ENTRY_TYPES[type]}: ${a.name}`,
+    fields: [
+      { name: "amount", label: "Summa (€)", type: "number", required: true, big: true, autofocus: true },
+      { name: "date", label: "Päivä", type: "date", def: today, required: true },
+      { name: "note", label: "Selite", placeholder: type === "korko" ? "esim. Vuoden korko, ASP-korkotuki" : "" },
+      ...(type === "nosto" && main ? [{ name: "toMain", label: `Siirto ${main.name}lle`, type: "checkbox", def: true }, { name: "asIncome", label: "Lisää tämän palkkakauden käytettävään rahaan", type: "checkbox", def: false, hint: "Päällä: nosto näkyy palkkakauden tulona (Muu tulo). Pois: vain tilien saldot muuttuvat." }] : [])
+    ],
+    onSubmit: v => {
+      if (!v.amount || v.amount <= 0) { alert("Anna summa."); return false; }
+      const amt = type === "nosto" ? -v.amount : v.amount;
+      const e = { type, amount: amt, date: v.date, note: v.note, at: nowIso() };
+      if (type === "nosto" && v.toMain) {
+        e.toMain = true;
+        if (v.asIncome) e.txId = save("tx", { date: v.date, amount: v.amount, kind: "tulo", cat: cats("tulo").find(c => c.id === "muutulo")?.id || cats("tulo")[0]?.id || "", note: `Nosto: ${a.name}` });
+      }
+      patch("accounts", a.id, { entries: [...(a.entries || []), e] });
+      toast(`${ENTRY_TYPES[type]} kirjattu`);
+    }
+  });
+}
+export function accSheet(id) {
+  const a = findIn("accounts", id); if (!a) return;
+  const mv = accMovements(a);
+  openSheet(`${a.emoji || ""} ${a.name}`, `<div class="occ-head"><div class="huge">${eur(accBalance(a))}</div><div class="muted small">${a.checkedAt ? "Tarkistettu " + fmtDate(a.checkedAt.slice(0, 10)) : ""}</div></div>
+    <div class="sheet-btns two">
+      <button class="btn primary" data-sheet="check">Tarkista saldo</button>
+      ${a.type !== "kaytto" ? `<button class="btn" data-sheet="korko">+ Korko</button><button class="btn" data-sheet="talletus">+ Talletus</button><button class="btn" data-sheet="nosto">− Nosto</button>` : ""}
+      <button class="btn ghost" data-sheet="edit">Muokkaa</button>
+    </div>
+    <h3 class="form-h">Viimeisimmät</h3>
+    ${mv.length ? `<div class="txlist">${mv.map(r => r.entry ? `<div class="txrow"><div class="txrow-main" data-sheet="entry:${esc(r.entry.at)}"><span class="cat-dot" style="--cc:#888">${r.entry.type === "korko" ? "📈" : r.entry.type === "nosto" ? "↩" : r.entry.type === "tasaus" ? "⚖️" : "➕"}</span><div class="tx-t"><div class="tx-title">${esc(r.note)}</div><div class="tx-sub">${fmtShort(r.date)}</div></div><span class="amt-v ${r.entry.amount >= 0 ? "pos" : "neg"}">${eur(r.entry.amount, true)}</span></div></div>` : rowHtml(r)).join("")}</div>` : '<p class="muted small">Ei tapahtumia saldon asettamisen jälkeen.</p>'}`, k => {
+    if (k === "check") { setTimeout(() => checkSheet(a.id), 30); return; }
+    if (k === "edit") { setTimeout(() => accForm(a.id), 30); return; }
+    if (ENTRY_TYPES[k]) { setTimeout(() => entryForm(a.id, k), 30); return; }
+    if (k.startsWith("entry:")) {
+      const at = k.slice(6), e = (a.entries || []).find(x => x.at === at); if (!e) return false;
+      if (!confirm(`Poistetaanko kirjaus "${ENTRY_TYPES[e.type]} ${eur(e.amount, true)}"?`)) return false;
+      if (e.txId) remove("tx", e.txId);
+      patch("accounts", a.id, { entries: (a.entries || []).filter(x => x.at !== at) });
+      toast("Kirjaus poistettu");
+    }
+  });
+}
+// Vanhat säästötavoitteet → säästötilit (kerran)
+let migrating = false;
+export function migrateGoals() {
+  if (migrating || !S.d.goals || !S.d.accounts || !list("goals").length) return;
+  migrating = true;
+  const b = writeBatch(db);
+  for (const g of list("goals")) {
+    b.set(doc(collection(db, "accounts")), { type: "saasto", name: g.name, emoji: g.emoji || "🏦", cat: g.cat || "", target: g.target || null, deadline: g.deadline || null,
+      balance: Number(g.base) || 0, balanceDate: g.baseDate || today(), balanceAt: g.baseDate ? g.baseDate + "T23:59:59Z" : nowIso(), entries: [], createdAt: nowIso() });
+    b.delete(doc(db, "goals", g.id));
+  }
+  b.commit().then(() => { migrating = false; toast("Säästötavoitteet siirretty säästötileiksi"); }).catch(e => { migrating = false; fail(e); });
+}
+Object.assign(ACTIONS, {
+  accNew: d => accForm(null, d.type || "saasto"),
+  accOpen: d => accSheet(d.id),
+  accCheck: d => checkSheet(d.id),
+  accSetup: () => accForm(null, "kaytto")
+});

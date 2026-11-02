@@ -718,3 +718,7 @@ small.block { display: block; margin-top: 2px; font-weight: 400; }
 .pin-sheet .back-btn { display: block; text-align: left; }
 .heavy-card { border-left: 4px solid var(--warn); }
 .prow.heavy { background: linear-gradient(90deg, var(--warn-l), transparent 70%); margin: 0 calc(-1 * var(--pad-x)); padding-left: var(--pad-x); padding-right: var(--pad-x); }
+.sheet-btns.two { grid-template-columns: 1fr 1fr; }
+.sheet-btns.two .btn:first-child { grid-column: 1 / -1; }
+.acc .huge { margin-top: 4px; }
+.saldo[data-action] { cursor: pointer; }
