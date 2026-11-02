@@ -1,12 +1,12 @@
 // Kukkaro – service worker: sovellus aukeaa myös ilman verkkoa.
 // Kun päivität sovelluksen tiedostoja GitHubiin, kasvata versionumeroa.
-const CACHE = "kukkaro-v5";
+const CACHE = "kukkaro-v6";
 const SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 const SHELL = ["./", "./index.html", "./styles.css", "./firebase-config.js", "./manifest.json",
   "./js/main.js", "./js/core.js", "./js/money.js", "./js/calc.js", "./js/theme.js", "./js/actions.js", "./js/lock.js",
   "./js/views/koti.js", "./js/views/jakso.js", "./js/views/toistuvat.js", "./js/views/tilastot.js", "./js/views/kategoriat.js",
   "./js/views/asetukset.js", "./js/views/teemat.js", "./js/views/rows.js",
-  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-32.png"];
 const SDK_FILES = ["firebase-app.js", "firebase-auth.js", "firebase-firestore.js"].map(f => SDK + f);
 
 self.addEventListener("install", e => {

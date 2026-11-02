@@ -105,7 +105,7 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ---------- Kirjautuminen ---------- */
 .auth { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
 .auth-card { width: 100%; max-width: 380px; background: var(--card); border-radius: calc(var(--r) + 6px); padding: 28px 22px; box-shadow: var(--shadow); text-align: center; display: grid; gap: 10px; }
-.auth-card > svg { width: 64px; height: 64px; margin: 0 auto 4px; }
+.auth-card > svg { width: 88px; height: 88px; margin: 0 auto 4px; }
 .auth-card h1 { font-size: 1.5rem; }
 .auth-card .form { text-align: left; margin-top: 8px; }
 .auth-err { color: var(--bad); font-size: .9rem; min-height: 1.2em; }

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+<defs>
+<radialGradient id="bg" cx="40%" cy="25%" r="85%"><stop offset="0" stop-color="#2a2a2a"/><stop offset=".55" stop-color="#0f0f0f"/><stop offset="1" stop-color="#050505"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".45" stop-color="#d4a947"/><stop offset="1" stop-color="#8f6a22"/></linearGradient>
+<linearGradient id="goldE" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#fae6a0"/><stop offset=".35" stop-color="#ddb453"/><stop offset=".7" stop-color="#b8892e"/><stop offset="1" stop-color="#7c5a1a"/></linearGradient>
+<filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="#000" flood-opacity=".7"/></filter>
+</defs>
+<rect x="2" y="2" width="96" height="96" rx="22" fill="url(#bg)"/><rect x="2" y="2" width="96" height="96" rx="22" fill="none" stroke="#3a3a3a" stroke-width=".8"/><rect x="10" y="10" width="80" height="80" rx="16" fill="none" stroke="url(#gold)" stroke-width="2.2"/>
+<g filter="url(#sh)"><path d="M71.57,28.26 A29.25,29.25 0 1 0 71.57,71.74 L64.55,63.93 A18.75,18.75 0 1 1 64.55,36.07 Z" fill="#6b4c14" stroke="#6b4c14" stroke-width="1.2" stroke-linejoin="round"/><path d="M22.20,40.50 L68.20,40.50 L65.00,47.10 L19.00,47.10 Z M22.20,52.90 L68.20,52.90 L65.00,59.50 L19.00,59.50 Z " fill="#6b4c14" stroke="#6b4c14" stroke-width="1.2" stroke-linejoin="round"/>
+<g fill="#fff0b8" fill-opacity=".55" transform="translate(-.35 -.45)"><path d="M71.57,28.26 A29.25,29.25 0 1 0 71.57,71.74 L64.55,63.93 A18.75,18.75 0 1 1 64.55,36.07 Z"/><path d="M22.20,40.50 L68.20,40.50 L65.00,47.10 L19.00,47.10 Z M22.20,52.90 L68.20,52.90 L65.00,59.50 L19.00,59.50 Z "/></g>
+<g fill="url(#goldE)"><path d="M71.57,28.26 A29.25,29.25 0 1 0 71.57,71.74 L64.55,63.93 A18.75,18.75 0 1 1 64.55,36.07 Z"/><path d="M22.20,40.50 L68.20,40.50 L65.00,47.10 L19.00,47.10 Z M22.20,52.90 L68.20,52.90 L65.00,59.50 L19.00,59.50 Z "/></g></g>
+</svg>
