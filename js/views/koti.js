@@ -66,7 +66,7 @@ export const HOME_DATA = {
     };
   },
   kevyt: () => {
-    const rec = list("recurring").filter(r => r.kind !== "tulo" && r.rhythm === "kk" && r.active !== false);
+    const rec = list("recurring").filter(r => r.kind !== "tulo" && (r.rhythm === "kk" || r.rhythm === "kkloppu") && r.active !== false);
     if (!rec.length) return null;
     const P = periods(), n0 = curIndex();
     // Ensin varoitus: pankkipäiväsiirron takia sama lasku kahdesti tällä tai seuraavalla jaksolla

@@ -103,10 +103,10 @@ export class Periods {
 
 // ---------- Toistuvat ----------
 export const RHYTHMS = [
-  ["kk", "Kuukausittain", 1], ["palkka", "Joka palkkapäivä", 0], ["vk", "Viikoittain", 7], ["2vk", "Joka 2. viikko", 14],
+  ["kk", "Kuukausittain", 1], ["kkloppu", "Kuukauden viimeinen päivä", 1], ["palkka", "Joka palkkapäivä", 0], ["vk", "Viikoittain", 7], ["2vk", "Joka 2. viikko", 14],
   ["4vk", "Joka 4. viikko", 28], ["2kk", "Joka 2. kuukausi", 2], ["3kk", "Neljännesvuosittain", 3], ["6kk", "Puolivuosittain", 6], ["vuosi", "Vuosittain", 12]
 ];
-const MONTHLY = { kk: 1, "2kk": 2, "3kk": 3, "6kk": 6, vuosi: 12 };
+const MONTHLY = { kk: 1, kkloppu: 1, "2kk": 2, "3kk": 3, "6kk": 6, vuosi: 12 };
 const WEEKLY = { vk: 7, "2vk": 14, "4vk": 28 };
 export const rhythmName = r => (RHYTHMS.find(x => x[0] === r) || RHYTHMS[0])[1];
 // Kuinka monta kertaa vuodessa (keskiarvo) – vuosikulun ja jaksokohtaisen keskiarvon laskuun
@@ -144,7 +144,7 @@ function scheduledDates(r, a, b, periods) {
     let k = Math.max(0, Math.ceil(daysBetween(r.start, from) / step));
     for (let i = 0; i < 400; i++, k++) { const d = addDays(r.start, k * step); if (d > to) break; if (d >= from) out.push(d); }
   } else {
-    const step = MONTHLY[r.rhythm] || 1, day = Number(r.day) || parseYmd(r.start).getDate();
+    const step = MONTHLY[r.rhythm] || 1, day = r.rhythm === "kkloppu" ? 31 : Number(r.day) || parseYmd(r.start).getDate();
     const s0 = parseYmd(r.start), f0 = parseYmd(from);
     let k = Math.max(0, Math.floor(((f0.getFullYear() - s0.getFullYear()) * 12 + f0.getMonth() - s0.getMonth()) / step) - 1);
     for (let i = 0; i < 400; i++, k++) { const d = addMonths(r.start, k * step, day); if (d > to) break; if (d >= from) out.push(d); }
@@ -200,7 +200,7 @@ export function summarize(p, rows, t = today(), forecast = true, carry = 0) {
 // 28 päivän jaksoon osuu kuukausilasku joko kerran tai ei lainkaan: 13 jaksoa, 12 laskua.
 // "Kevyt jakso" = kuukausittainen erä, joka on voimassa koko jakson, mutta ei osu siihen.
 export function skippedMonthly(p, recurring, periods) {
-  return recurring.filter(r => r.rhythm === "kk" && r.active !== false && r.start && r.start <= p.start && (!r.end || r.end >= p.end)
+  return recurring.filter(r => (r.rhythm === "kk" || r.rhythm === "kkloppu") && r.active !== false && r.start && r.start <= p.start && (!r.end || r.end >= p.end)
     && occurrences(r, p.start, p.end, periods).length === 0);
 }
 // Jos jakso on lyhyempi kuin kuukausi (7/14 pv) tai erä on viikoittainen, sama erä voi osua jaksoon useasti

@@ -79,7 +79,7 @@ export const REC_FIELDS = [
   { name: "amount", label: "Summa (€)", type: "number", required: true },
   { name: "cat", label: "Kategoria", type: "catpick", kindFrom: "kind" },
   { name: "rhythm", label: "Toistuu", type: "select", options: RHYTHMS.map(r => [r[0], r[1]]), def: "kk" },
-  { name: "start", label: "Seuraava (tai ensimmäinen) veloituspäivä", type: "date", required: true, def: today, hint: "Kuukausittaisissa veloituspäivä on tämän päivän numero joka kuukausi. \"Joka palkkapäivä\" -rytmissä tällä on väliä vain aloituspäivänä." },
+  { name: "start", label: "Seuraava (tai ensimmäinen) veloituspäivä", type: "date", required: true, def: today, hint: "Kuukausittaisissa veloituspäivä on tämän päivän numero joka kuukausi. \"Kuukauden viimeinen päivä\" -rytmissä erä on aina kuun viimeisenä päivänä (28.–31.), ja tästä päivästä katsotaan vain, mistä kuusta se alkaa." },
   { name: "end", label: "Päättyy (tyhjä = toistaiseksi)", type: "date" },
   { name: "shift", label: "Jos eräpäivä on viikonloppu tai pyhä, raha lähtee tililtä", type: "select", options: SHIFTS, def: "seur", hint: "Ei koske \"Joka palkkapäivä\" -rytmiä: palkkapäivä on aina pankkipäivä." },
   { name: "auto", label: "Menee automaattisesti", type: "checkbox", def: true, hint: "Suoraveloitus, e-laskun automaattihyväksyntä tai kortti. Erä merkitään maksetuksi eräpäivänä itsestään. Pois päältä: kuittaat erän itse maksetuksi." },
@@ -94,7 +94,7 @@ export function recForm(values = {}, id = null) {
     onSubmit: (v, f) => {
       if (v.amount === null || v.amount < 0) { alert("Anna summa."); return false; }
       if (v.end && v.end < v.start) { alert("Päättymispäivä on ennen aloituspäivää."); return false; }
-      const data = { ...v, active: old ? old.active !== false : true, day: parseYmd(v.start).getDate() };
+      const data = { ...v, active: old ? old.active !== false : true, day: v.rhythm === "kkloppu" ? 31 : parseYmd(v.start).getDate() };
       if (old) {
         const was = amountAt(old, today());
         if (round2(was) !== round2(v.amount)) {
